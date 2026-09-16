@@ -3,4 +3,5 @@ mujoco
 numpy
 ultralytics
 openvino
+opencv-python-headless
 speechmatics-batch==0.5.0

@@ -1,19 +1,20 @@
 from __future__ import annotations
 
+import asyncio
 import contextlib
+import hashlib
 import io
 import runpy
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import mujoco
 import numpy as np
 import streamlit as st
 
-from tablemind.conversation.streamlit_voice import capture_voice_command
 from tablemind.integration.closed_loop import ClosedLoopVLA
-from tablemind.perception.camera import TableCamera
 from tablemind.simulation.runtime import BimanualTableSimulation
 
 
@@ -99,12 +100,10 @@ st.markdown(
             BlinkMacSystemFont,
             "Segoe UI",
             sans-serif !important;
-
         font-size: 4.6rem !important;
         font-weight: 800 !important;
         letter-spacing: -0.065em !important;
         line-height: 0.95 !important;
-
         background:
             linear-gradient(
                 100deg,
@@ -113,7 +112,6 @@ st.markdown(
                 #a970ff 65%,
                 #d5a9ff 100%
             );
-
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
@@ -141,16 +139,13 @@ st.markdown(
 
     .section-label {
         color: #727e94;
-
         font-family:
             "JetBrains Mono",
             monospace;
-
         font-size: 0.68rem;
         font-weight: 600;
         letter-spacing: 0.18em;
         text-transform: uppercase;
-
         margin-top: 2.3rem;
         margin-bottom: 0.85rem;
     }
@@ -162,16 +157,13 @@ st.markdown(
 
     .hero-kicker {
         color: #b990ff;
-
         font-family:
             "JetBrains Mono",
             monospace;
-
         font-size: 0.72rem;
         font-weight: 600;
         letter-spacing: 0.2em;
         text-transform: uppercase;
-
         margin-bottom: 0.8rem;
     }
 
@@ -185,25 +177,18 @@ st.markdown(
 
     .hero-pill {
         display: inline-block;
-
         margin-top: 1.4rem;
         padding: 0.45rem 0.8rem;
-
         border:
             1px solid
             rgba(169, 112, 255, 0.28);
-
         border-radius: 999px;
-
         color: #b9a1dc;
-
         background:
             rgba(169, 112, 255, 0.06);
-
         font-family:
             "JetBrains Mono",
             monospace;
-
         font-size: 0.65rem;
         letter-spacing: 0.12em;
     }
@@ -215,16 +200,12 @@ st.markdown(
 
     .online-status {
         text-align: right;
-
         color: #48ef9b;
-
         font-family:
             "JetBrains Mono",
             monospace;
-
         font-size: 0.7rem;
         letter-spacing: 0.12em;
-
         padding-top: 0.7rem;
     }
 
@@ -240,13 +221,10 @@ st.markdown(
                 rgba(16, 20, 29, 0.96),
                 rgba(7, 10, 16, 0.96)
             );
-
         border:
             1px solid
             rgba(112, 125, 151, 0.16) !important;
-
         border-radius: 16px !important;
-
         box-shadow:
             0 15px 45px rgba(0, 0, 0, 0.25),
             inset 0 1px 0 rgba(255, 255, 255, 0.015);
@@ -265,18 +243,15 @@ st.markdown(
     [data-testid="stTextInput"] input {
         background: #0b0f17 !important;
         color: #edf0f7 !important;
-
         border:
             1px solid
             rgba(169, 112, 255, 0.22) !important;
-
         border-radius: 10px !important;
         padding: 0.85rem 1rem !important;
     }
 
     [data-testid="stTextInput"] input:focus {
         border-color: #a970ff !important;
-
         box-shadow:
             0 0 0 1px rgba(169, 112, 255, 0.35),
             0 0 22px rgba(169, 112, 255, 0.08) !important;
@@ -290,30 +265,23 @@ st.markdown(
     .stButton > button {
         width: 100%;
         min-height: 46px;
-
         background:
             linear-gradient(
                 135deg,
                 rgba(169, 112, 255, 0.12),
                 rgba(90, 55, 150, 0.08)
             ) !important;
-
         color: #e9e3f5 !important;
-
         border:
             1px solid
             rgba(169, 112, 255, 0.32) !important;
-
         border-radius: 10px !important;
-
         font-family:
             "JetBrains Mono",
             monospace !important;
-
         font-size: 0.72rem !important;
         font-weight: 600 !important;
         letter-spacing: 0.07em !important;
-
         transition:
             border-color 0.18s ease,
             background 0.18s ease,
@@ -327,11 +295,8 @@ st.markdown(
                 rgba(169, 112, 255, 0.23),
                 rgba(90, 55, 150, 0.14)
             ) !important;
-
         border-color: #a970ff !important;
-
         transform: translateY(-1px);
-
         box-shadow:
             0 8px 28px rgba(169, 112, 255, 0.10);
     }
@@ -343,11 +308,9 @@ st.markdown(
 
     .pipeline-number {
         color: #a970ff;
-
         font-family:
             "JetBrains Mono",
             monospace;
-
         font-size: 0.62rem;
         letter-spacing: 0.12em;
     }
@@ -367,11 +330,9 @@ st.markdown(
 
     .pipeline-description {
         color: #697487;
-
         font-family:
             "JetBrains Mono",
             monospace;
-
         font-size: 0.61rem;
         margin-top: 0.35rem;
     }
@@ -383,22 +344,18 @@ st.markdown(
 
     [data-testid="stMetric"] {
         background: rgba(8, 11, 17, 0.72);
-
         border:
             1px solid
             rgba(110, 124, 151, 0.14);
-
         border-radius: 12px;
         padding: 1rem;
     }
 
     [data-testid="stMetricLabel"] {
         color: #69758a !important;
-
         font-family:
             "JetBrains Mono",
             monospace;
-
         font-size: 0.62rem !important;
         letter-spacing: 0.08em;
     }
@@ -414,23 +371,17 @@ st.markdown(
 
     .status-ready {
         color: #48ef9b;
-
         font-family:
             "JetBrains Mono",
             monospace;
-
         font-size: 0.68rem;
         letter-spacing: 0.08em;
-
         padding: 0.7rem 0.85rem;
-
         background:
             rgba(56, 242, 154, 0.045);
-
         border:
             1px solid
             rgba(56, 242, 154, 0.18);
-
         border-radius: 9px;
     }
 
@@ -441,22 +392,16 @@ st.markdown(
 
     .command-display {
         color: #ddd7e8;
-
         font-family:
             "JetBrains Mono",
             monospace;
-
         font-size: 0.84rem;
         line-height: 1.7;
-
         padding: 1rem;
-
         background: #080b11;
-
         border:
             1px solid
             rgba(169, 112, 255, 0.16);
-
         border-radius: 10px;
     }
 
@@ -467,29 +412,22 @@ st.markdown(
 
     .voice-display {
         color: #d9d1ea;
-
         font-family:
             "JetBrains Mono",
             monospace;
-
         font-size: 0.78rem;
         line-height: 1.7;
-
         padding: 0.9rem 1rem;
-
         background:
             linear-gradient(
                 135deg,
                 rgba(169, 112, 255, 0.08),
                 rgba(0, 229, 255, 0.025)
             );
-
         border:
             1px solid
             rgba(169, 112, 255, 0.20);
-
         border-radius: 10px;
-
         margin-top: 0.8rem;
     }
 
@@ -500,30 +438,24 @@ st.markdown(
 
     .execution-banner {
         padding: 1.4rem 1.5rem;
-
         background:
             linear-gradient(
                 135deg,
                 rgba(169, 112, 255, 0.12),
                 rgba(0, 229, 255, 0.035)
             );
-
         border:
             1px solid
             rgba(169, 112, 255, 0.28);
-
         border-radius: 14px;
-
         margin-bottom: 1rem;
     }
 
     .execution-label {
         color: #a970ff;
-
         font-family:
             "JetBrains Mono",
             monospace;
-
         font-size: 0.68rem;
         letter-spacing: 0.14em;
     }
@@ -543,7 +475,6 @@ st.markdown(
     hr {
         border-color:
             rgba(112, 125, 151, 0.12) !important;
-
         margin-top: 2rem !important;
         margin-bottom: 2rem !important;
     }
@@ -568,19 +499,14 @@ st.markdown(
 
     .footer {
         text-align: center;
-
         color: #4f5b6f;
-
         font-family:
             "JetBrains Mono",
             monospace;
-
         font-size: 0.62rem;
         letter-spacing: 0.08em;
-
         margin-top: 3rem;
         padding-top: 1.5rem;
-
         border-top:
             1px solid
             rgba(112, 125, 151, 0.10);
@@ -672,10 +598,100 @@ def show_demo_result(
         st.success(
             "TABLEMIND verified the physical outcome successfully."
         )
+
     else:
         st.error(
             f"Demo exited with return code {return_code}."
         )
+
+
+# ============================================================
+# BROWSER VOICE / SPEECHMATICS BATCH
+# ============================================================
+
+def transcribe_browser_audio(
+    audio_bytes: bytes,
+) -> str:
+    """
+    Transcribe browser-recorded WAV audio through the
+    Speechmatics Batch API.
+
+    Browser microphone
+            ↓
+    Streamlit audio_input
+            ↓
+    temporary WAV
+            ↓
+    Speechmatics Batch
+            ↓
+    TABLEMIND natural-language command
+    """
+
+    try:
+        from speechmatics.batch import AsyncClient
+
+    except ImportError as exc:
+        raise RuntimeError(
+            "Speechmatics Batch SDK is not installed. "
+            "Check requirements.txt for "
+            "speechmatics-batch==0.5.0."
+        ) from exc
+
+    temporary_path = None
+
+    try:
+        with tempfile.NamedTemporaryFile(
+            suffix=".wav",
+            delete=False,
+        ) as temporary_file:
+
+            temporary_file.write(audio_bytes)
+            temporary_file.flush()
+
+            temporary_path = temporary_file.name
+
+        async def _transcribe() -> str:
+
+            async with AsyncClient() as client:
+
+                result = await client.transcribe(
+                    temporary_path
+                )
+
+                transcript = getattr(
+                    result,
+                    "transcript_text",
+                    "",
+                )
+
+                return str(
+                    transcript or ""
+                ).strip()
+
+        transcript = asyncio.run(
+            _transcribe()
+        )
+
+        if not transcript:
+            raise RuntimeError(
+                "Speechmatics returned an empty transcript."
+            )
+
+        return transcript
+
+    finally:
+
+        if temporary_path is not None:
+
+            try:
+                Path(
+                    temporary_path
+                ).unlink(
+                    missing_ok=True
+                )
+
+            except OSError:
+                pass
 
 
 # ============================================================
@@ -700,6 +716,7 @@ class PresentationCamera:
         width=640,
         height=480,
     ):
+
         self.model = model
         self.data = data
 
@@ -729,6 +746,7 @@ class PresentationCamera:
         self.camera.elevation = -22.0
 
     def capture(self):
+
         self.renderer.update_scene(
             self.data,
             camera=self.camera,
@@ -736,9 +754,12 @@ class PresentationCamera:
 
         image = self.renderer.render()
 
-        return np.asarray(image).copy()
+        return np.asarray(
+            image
+        ).copy()
 
     def close(self):
+
         self.renderer.close()
 
 
@@ -779,6 +800,7 @@ def run_live_bidirectional_goal_demo() -> tuple[
 
     @classmethod
     def captured_create(cls):
+
         simulation = original_create()
 
         simulation_holder["simulation"] = simulation
@@ -786,6 +808,7 @@ def run_live_bidirectional_goal_demo() -> tuple[
         camera = None
 
         try:
+
             camera = PresentationCamera(
                 simulation.model,
                 simulation.data,
@@ -798,6 +821,7 @@ def run_live_bidirectional_goal_demo() -> tuple[
             )
 
         finally:
+
             if camera is not None:
                 camera.close()
 
@@ -806,12 +830,15 @@ def run_live_bidirectional_goal_demo() -> tuple[
     BimanualTableSimulation.create = captured_create
 
     try:
+
         with contextlib.redirect_stdout(
             stdout_buffer
         ):
+
             with contextlib.redirect_stderr(
                 stderr_buffer
             ):
+
                 runpy.run_path(
                     str(BIDIRECTIONAL_SCRIPT),
                     run_name="__main__",
@@ -838,6 +865,7 @@ def run_live_bidirectional_goal_demo() -> tuple[
             camera = None
 
             try:
+
                 camera = PresentationCamera(
                     simulation.model,
                     simulation.data,
@@ -848,6 +876,7 @@ def run_live_bidirectional_goal_demo() -> tuple[
                 after_frame = camera.capture()
 
             finally:
+
                 if camera is not None:
                     camera.close()
 
@@ -890,6 +919,7 @@ def run_live_bidirectional_goal_demo() -> tuple[
         )
 
     finally:
+
         BimanualTableSimulation.create = (
             original_create_descriptor
         )
@@ -991,14 +1021,18 @@ def run_live_mujoco_demo(
     finally:
 
         if vision is not None:
+
             try:
                 vision.close()
+
             except Exception:
                 pass
 
         if camera is not None:
+
             try:
                 camera.close()
+
             except Exception:
                 pass
 
@@ -1017,6 +1051,9 @@ if "instruction" not in st.session_state:
 
 if "voice_transcript" not in st.session_state:
     st.session_state.voice_transcript = ""
+
+if "last_voice_audio_signature" not in st.session_state:
+    st.session_state.last_voice_audio_signature = ""
 
 
 # ============================================================
@@ -1058,6 +1095,7 @@ if st.session_state.mode == "execution":
             "← RETURN TO COMMAND CENTER",
             key="execution_return",
         ):
+
             st.session_state.mode = "command"
             st.rerun()
 
@@ -1198,7 +1236,6 @@ if st.session_state.mode == "execution":
     ):
 
         st.session_state.mode = "command"
-
         st.rerun()
 
     st.markdown(
@@ -1336,6 +1373,7 @@ with command_left:
             instruction
         )
 
+
         # ----------------------------------------------------
         # COMMAND BUTTONS
         # ----------------------------------------------------
@@ -1346,6 +1384,7 @@ with command_left:
                 gap="small",
             )
         )
+
 
         # ----------------------------------------------------
         # CLOSED-LOOP BUTTON
@@ -1369,77 +1408,93 @@ with command_left:
 
                 st.rerun()
 
+
         # ----------------------------------------------------
-        # SPEECHMATICS VOICE BUTTON
+        # BROWSER SPEECHMATICS VOICE
         # ----------------------------------------------------
 
         with voice_column:
 
-            if st.button(
-                "🎤  SPEAK COMMAND",
-                key="speak_command",
-            ):
+            voice_audio = st.audio_input(
+                "🎤 SPEAK COMMAND",
+                sample_rate=16000,
+                key="browser_voice_input",
+            )
 
-                with st.status(
-                    "Listening with Speechmatics...",
-                    expanded=True,
-                ) as status:
+            if voice_audio is not None:
 
-                    st.write(
-                        "◉ Microphone active"
-                    )
+                audio_bytes = voice_audio.getvalue()
 
-                    st.write(
-                        "◉ Waiting for a complete command..."
-                    )
+                if audio_bytes:
 
-                    voice_result = (
-                        capture_voice_command()
-                    )
+                    audio_signature = hashlib.sha256(
+                        audio_bytes
+                    ).hexdigest()
 
-                    if voice_result.success:
+                    if (
+                        audio_signature
+                        != st.session_state.last_voice_audio_signature
+                    ):
 
-                        spoken_instruction = (
-                            voice_result.transcript.strip()
+                        st.session_state.last_voice_audio_signature = (
+                            audio_signature
                         )
 
-                        st.session_state.voice_transcript = (
-                            spoken_instruction
-                        )
+                        with st.status(
+                            "Transcribing with Speechmatics...",
+                            expanded=True,
+                        ) as status:
 
-                        st.session_state.instruction = (
-                            spoken_instruction
-                        )
-
-                        status.update(
-                            label="Voice command captured",
-                            state="complete",
-                        )
-
-                        st.success(
-                            f'Heard: "{spoken_instruction}"'
-                        )
-
-                        st.session_state.mode = (
-                            "execution"
-                        )
-
-                        st.rerun()
-
-                    else:
-
-                        status.update(
-                            label="Voice capture failed",
-                            state="error",
-                        )
-
-                        st.error(
-                            voice_result.error
-                            or (
-                                "Speechmatics did not "
-                                "return a command."
+                            st.write(
+                                "◉ Browser microphone captured"
                             )
-                        )
+
+                            st.write(
+                                "◉ Sending WAV audio to Speechmatics"
+                            )
+
+                            try:
+
+                                spoken_instruction = (
+                                    transcribe_browser_audio(
+                                        audio_bytes
+                                    )
+                                )
+
+                                st.session_state.voice_transcript = (
+                                    spoken_instruction
+                                )
+
+                                st.session_state.instruction = (
+                                    spoken_instruction
+                                )
+
+                                status.update(
+                                    label="Voice command captured",
+                                    state="complete",
+                                )
+
+                                st.success(
+                                    f'Heard: "{spoken_instruction}"'
+                                )
+
+                                st.session_state.mode = (
+                                    "execution"
+                                )
+
+                                st.rerun()
+
+                            except Exception as exc:
+
+                                status.update(
+                                    label="Voice transcription failed",
+                                    state="error",
+                                )
+
+                                st.error(
+                                    f"{type(exc).__name__}: {exc}"
+                                )
+
 
         # ----------------------------------------------------
         # GOAL DEMO BUTTON
@@ -1564,6 +1619,7 @@ with command_left:
                         stdout,
                         language="text",
                     )
+
 
         # ----------------------------------------------------
         # LAST VOICE TRANSCRIPT

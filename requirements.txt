@@ -1,4 +1,6 @@
 streamlit
 mujoco
 numpy
+ultralytics
+openvino
 speechmatics-batch==0.5.0

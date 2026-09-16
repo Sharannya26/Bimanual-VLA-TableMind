@@ -1,0 +1,4 @@
+mujoco==3.13.0
+
+[dev]
+pytest>=8.0

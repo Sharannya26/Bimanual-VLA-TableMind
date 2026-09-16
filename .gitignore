@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+assets/mujoco/bimanual_table.xml
+.env

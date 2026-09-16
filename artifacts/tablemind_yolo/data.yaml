@@ -1,0 +1,9 @@
+path: C:/Users/Sharannya/OneDrive/Documents/Hackathons/Bimanual-VLA-TableMind/artifacts/tablemind_yolo
+
+train: images/train
+val: images/val
+test: images/test
+
+names:
+  0: plate
+  1: glass

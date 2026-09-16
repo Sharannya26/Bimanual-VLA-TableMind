@@ -1,5 +1,14 @@
 from __future__ import annotations
 
+import os
+
+# Streamlit Cloud does not allow Ultralytics to write to the normal
+# user configuration directory. Use a writable temporary directory.
+os.environ.setdefault(
+    "YOLO_CONFIG_DIR",
+    "/tmp/Ultralytics",
+)
+
 import asyncio
 import contextlib
 import hashlib
@@ -13,9 +22,6 @@ from pathlib import Path
 import mujoco
 import numpy as np
 import streamlit as st
-
-from tablemind.integration.closed_loop import ClosedLoopVLA
-from tablemind.simulation.runtime import BimanualTableSimulation
 
 
 # ============================================================
@@ -613,18 +619,15 @@ def transcribe_browser_audio(
     audio_bytes: bytes,
 ) -> str:
     """
-    Transcribe browser-recorded WAV audio through the
-    Speechmatics Batch API.
-
     Browser microphone
-            ↓
+        ↓
     Streamlit audio_input
-            ↓
+        ↓
     temporary WAV
-            ↓
+        ↓
     Speechmatics Batch
-            ↓
-    TABLEMIND natural-language command
+        ↓
+    TABLEMIND command
     """
 
     try:
@@ -640,15 +643,21 @@ def transcribe_browser_audio(
     temporary_path = None
 
     try:
+
         with tempfile.NamedTemporaryFile(
             suffix=".wav",
             delete=False,
         ) as temporary_file:
 
-            temporary_file.write(audio_bytes)
+            temporary_file.write(
+                audio_bytes
+            )
+
             temporary_file.flush()
 
-            temporary_path = temporary_file.name
+            temporary_path = (
+                temporary_file.name
+            )
 
         async def _transcribe() -> str:
 
@@ -673,6 +682,7 @@ def transcribe_browser_audio(
         )
 
         if not transcript:
+
             raise RuntimeError(
                 "Speechmatics returned an empty transcript."
             )
@@ -684,6 +694,7 @@ def transcribe_browser_audio(
         if temporary_path is not None:
 
             try:
+
                 Path(
                     temporary_path
                 ).unlink(
@@ -691,6 +702,7 @@ def transcribe_browser_audio(
                 )
 
             except OSError:
+
                 pass
 
 
@@ -702,11 +714,8 @@ class PresentationCamera:
     """
     UI-only MuJoCo presentation camera.
 
-    This camera is deliberately separate from TABLEMIND's
-    calibrated table_overview perception camera.
-
-    Vision / YOLO / OpenVINO continues using the original
-    calibrated perception camera.
+    This camera is separate from the calibrated
+    table_overview perception camera.
     """
 
     def __init__(
@@ -767,20 +776,19 @@ class PresentationCamera:
 # LIVE 9.5 BIDIRECTIONAL GOAL DEMO
 # ============================================================
 
-def run_live_bidirectional_goal_demo() -> tuple[
-    bool,
-    object | None,
-    object | None,
-    str,
-    str,
-    str,
-]:
+def run_live_bidirectional_goal_demo():
     """
     Run the proven Milestone 9.5 demo inside the Streamlit
-    process while capturing the exact MuJoCo simulation.
+    process while capturing the real MuJoCo simulation.
 
-    The 9.5 robotics implementation itself is unchanged.
+    Heavy robotics imports are intentionally performed
+    inside this function so Streamlit Cloud can display
+    the UI before loading the complete vision stack.
     """
+
+    from tablemind.simulation.runtime import (
+        BimanualTableSimulation,
+    )
 
     simulation_holder = {
         "simulation": None,
@@ -803,7 +811,9 @@ def run_live_bidirectional_goal_demo() -> tuple[
 
         simulation = original_create()
 
-        simulation_holder["simulation"] = simulation
+        simulation_holder[
+            "simulation"
+        ] = simulation
 
         camera = None
 
@@ -816,18 +826,21 @@ def run_live_bidirectional_goal_demo() -> tuple[
                 height=480,
             )
 
-            simulation_holder["before_frame"] = (
-                camera.capture()
-            )
+            simulation_holder[
+                "before_frame"
+            ] = camera.capture()
 
         finally:
 
             if camera is not None:
+
                 camera.close()
 
         return simulation
 
-    BimanualTableSimulation.create = captured_create
+    BimanualTableSimulation.create = (
+        captured_create
+    )
 
     try:
 
@@ -844,10 +857,19 @@ def run_live_bidirectional_goal_demo() -> tuple[
                     run_name="__main__",
                 )
 
-        stdout = stdout_buffer.getvalue()
-        stderr = stderr_buffer.getvalue()
+        stdout = (
+            stdout_buffer.getvalue()
+        )
 
-        simulation = simulation_holder["simulation"]
+        stderr = (
+            stderr_buffer.getvalue()
+        )
+
+        simulation = (
+            simulation_holder[
+                "simulation"
+            ]
+        )
 
         success = (
             "TABLEMIND 9.5 BIDIRECTIONAL GOAL DEMO SUCCESSFUL"
@@ -855,7 +877,9 @@ def run_live_bidirectional_goal_demo() -> tuple[
         )
 
         before_frame = (
-            simulation_holder["before_frame"]
+            simulation_holder[
+                "before_frame"
+            ]
         )
 
         after_frame = None
@@ -878,6 +902,7 @@ def run_live_bidirectional_goal_demo() -> tuple[
             finally:
 
                 if camera is not None:
+
                     camera.close()
 
         if success:
@@ -886,16 +911,16 @@ def run_live_bidirectional_goal_demo() -> tuple[
                 "1 → 2 → 1 VERIFIED — the proven "
                 "Milestone 9.5 goal-reconciliation demo "
                 "ran inside the same MuJoCo process and "
-                "the final physical state was rendered in "
-                "the UI."
+                "the final physical state was rendered "
+                "in the UI."
             )
 
         else:
 
             message = (
-                "The Milestone 9.5 demo completed without "
-                "its success marker. Open the diagnostic "
-                "trace below."
+                "The Milestone 9.5 demo completed "
+                "without its success marker. "
+                "Open the diagnostic trace below."
             )
 
         return (
@@ -911,7 +936,9 @@ def run_live_bidirectional_goal_demo() -> tuple[
 
         return (
             False,
-            simulation_holder["before_frame"],
+            simulation_holder[
+                "before_frame"
+            ],
             None,
             f"{type(exc).__name__}: {exc}",
             stdout_buffer.getvalue(),
@@ -931,22 +958,21 @@ def run_live_bidirectional_goal_demo() -> tuple[
 
 def run_live_mujoco_demo(
     instruction: str,
-) -> tuple[
-    bool,
-    object | None,
-    object | None,
-    str,
-]:
+):
     """
-    Execute TABLEMIND directly through the real MuJoCo
-    simulation instead of launching a demo subprocess.
+    Execute TABLEMIND through the real MuJoCo simulation.
 
-    Returns:
-        success
-        before_frame
-        after_frame
-        message
+    Heavy robotics imports are intentionally delayed until
+    this function is called.
     """
+
+    from tablemind.integration.closed_loop import (
+        ClosedLoopVLA,
+    )
+
+    from tablemind.simulation.runtime import (
+        BimanualTableSimulation,
+    )
 
     simulation = None
     camera = None
@@ -965,7 +991,9 @@ def run_live_mujoco_demo(
             height=480,
         )
 
-        before_frame = camera.capture()
+        before_frame = (
+            camera.capture()
+        )
 
         vision = ClosedLoopVLA.create(
             simulation
@@ -977,7 +1005,9 @@ def run_live_mujoco_demo(
 
         simulation.step(1)
 
-        after_frame = camera.capture()
+        after_frame = (
+            camera.capture()
+        )
 
         success = bool(
             getattr(
@@ -1023,17 +1053,21 @@ def run_live_mujoco_demo(
         if vision is not None:
 
             try:
+
                 vision.close()
 
             except Exception:
+
                 pass
 
         if camera is not None:
 
             try:
+
                 camera.close()
 
             except Exception:
+
                 pass
 
 
@@ -1042,17 +1076,21 @@ def run_live_mujoco_demo(
 # ============================================================
 
 if "mode" not in st.session_state:
+
     st.session_state.mode = "command"
 
 if "instruction" not in st.session_state:
+
     st.session_state.instruction = (
         "Set the table for two."
     )
 
 if "voice_transcript" not in st.session_state:
+
     st.session_state.voice_transcript = ""
 
 if "last_voice_audio_signature" not in st.session_state:
+
     st.session_state.last_voice_audio_signature = ""
 
 
@@ -1096,7 +1134,10 @@ if st.session_state.mode == "execution":
             key="execution_return",
         ):
 
-            st.session_state.mode = "command"
+            st.session_state.mode = (
+                "command"
+            )
+
             st.rerun()
 
     st.divider()
@@ -1106,8 +1147,8 @@ if st.session_state.mode == "execution":
     )
 
     st.caption(
-        "The following execution uses the actual "
-        "MuJoCo simulation, not a mock visualization."
+        "This execution uses the actual "
+        "MuJoCo simulation."
     )
 
     status_placeholder = st.empty()
@@ -1220,7 +1261,9 @@ if st.session_state.mode == "execution":
                 border=True
             ):
 
-                st.caption(number)
+                st.caption(
+                    number
+                )
 
                 st.markdown(
                     f"**{name}**"
@@ -1235,7 +1278,10 @@ if st.session_state.mode == "execution":
         key="execution_back",
     ):
 
-        st.session_state.mode = "command"
+        st.session_state.mode = (
+            "command"
+        )
+
         st.rerun()
 
     st.markdown(
@@ -1262,7 +1308,7 @@ header_left, header_right = st.columns(
 
 
 # ============================================================
-# HERO LEFT
+# HERO
 # ============================================================
 
 with header_left:
@@ -1373,11 +1419,6 @@ with command_left:
             instruction
         )
 
-
-        # ----------------------------------------------------
-        # COMMAND BUTTONS
-        # ----------------------------------------------------
-
         execute_column, voice_column, goal_column = (
             st.columns(
                 3,
@@ -1385,9 +1426,8 @@ with command_left:
             )
         )
 
-
         # ----------------------------------------------------
-        # CLOSED-LOOP BUTTON
+        # CLOSED-LOOP EXECUTION
         # ----------------------------------------------------
 
         with execute_column:
@@ -1408,9 +1448,8 @@ with command_left:
 
                 st.rerun()
 
-
         # ----------------------------------------------------
-        # BROWSER SPEECHMATICS VOICE
+        # BROWSER VOICE
         # ----------------------------------------------------
 
         with voice_column:
@@ -1423,13 +1462,17 @@ with command_left:
 
             if voice_audio is not None:
 
-                audio_bytes = voice_audio.getvalue()
+                audio_bytes = (
+                    voice_audio.getvalue()
+                )
 
                 if audio_bytes:
 
-                    audio_signature = hashlib.sha256(
-                        audio_bytes
-                    ).hexdigest()
+                    audio_signature = (
+                        hashlib.sha256(
+                            audio_bytes
+                        ).hexdigest()
+                    )
 
                     if (
                         audio_signature
@@ -1495,9 +1538,8 @@ with command_left:
                                     f"{type(exc).__name__}: {exc}"
                                 )
 
-
         # ----------------------------------------------------
-        # GOAL DEMO BUTTON
+        # 1 → 2 → 1 DEMO
         # ----------------------------------------------------
 
         with goal_column:
@@ -1619,7 +1661,6 @@ with command_left:
                         stdout,
                         language="text",
                     )
-
 
         # ----------------------------------------------------
         # LAST VOICE TRANSCRIPT
@@ -2023,6 +2064,17 @@ with goal_right:
                 )
 
             st.divider()
+
+            if before_frame is not None:
+
+                st.markdown(
+                    "### INITIAL PHYSICAL STATE"
+                )
+
+                st.image(
+                    before_frame,
+                    use_container_width=True,
+                )
 
             if after_frame is not None:
 

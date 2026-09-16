@@ -1,0 +1,4 @@
+streamlit
+mujoco
+numpy
+speechmatics-batch==0.5.0

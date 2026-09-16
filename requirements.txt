@@ -1,7 +1,7 @@
 streamlit
 mujoco
 numpy
+opencv-python-headless==5.0.0.93
 ultralytics
 openvino
-opencv-python-headless
 speechmatics-batch==0.5.0

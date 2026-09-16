@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import os
 
-# Streamlit Cloud does not allow Ultralytics to write to the normal
-# user configuration directory. Use a writable temporary directory.
+# Headless MuJoCo rendering for Streamlit Cloud
+os.environ.setdefault("MUJOCO_GL", "egl")
+os.environ.setdefault("PYOPENGL_PLATFORM", "egl")
+
 os.environ.setdefault(
     "YOLO_CONFIG_DIR",
     "/tmp/Ultralytics",
